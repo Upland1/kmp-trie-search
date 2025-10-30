@@ -1,0 +1,50 @@
+# Binarios/artefactos de build
+/bin/
+/bin/*
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# IDEs y editores
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Sistemas operativos
+.DS_Store
+Thumbs.db
+
+# Archivos de log, tmp y cache
+*.log
+*.tmp
+*.temp
+/tmp/
+/cache/
+
+# Archivos de cover profile y test artifacts
+coverage.out
+*.coverprofile
+
+# Entornos virtuales / secrets locales
+.env
+.env.local
+*.local
+
+# OneDrive / Office temp files
+~$*
+~*.tmp
+
+# Otros (Windows)
+desktop.ini
+documentation/*
+
+# Mac
+.AppleDouble
+.LSOverride
+
+# Exclude large data files
+Books/*
