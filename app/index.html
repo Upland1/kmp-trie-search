@@ -22,6 +22,7 @@
     <h1>Buscador de Patrones con KMP</h1>
     <form method="POST" action="/">
         <label>Patrón a buscar:</label>
+        <div id="suggest-meta" style="font-size:12px;color:#666;margin-top:6px;"></div>
         <div class="suggestions-container">
             <input id="pattern" name="pattern" oninput="fetchSuggestions()" autocomplete="off" value="{{.Pattern}}" placeholder="Ingresa una palabra o frase...">
             <div id="suggestions" class="suggestions-list" style="background:white;border:1px solid #ccc;border-radius:4px;margin-top:6px;"></div>
@@ -64,12 +65,19 @@
       try {
         const res = await fetch('/suggest?prefix=' + encodeURIComponent(query));
         if (!res.ok) { suggestionsDiv.innerHTML = ''; return; }
-        const suggestions = await res.json();
+        const data = await res.json();
+        const suggestions = data.suggestions || [];
 
         suggestionsDiv.innerHTML = suggestions
           .slice(0, 5)
           .map(word => `<div class="suggestion">${word}</div>`)
           .join("");
+
+        // mostrar métricas opcionales (por ejemplo dentro del contenedor)
+        const meta = document.getElementById('suggest-meta');
+        if (meta) {
+          meta.textContent = `Tiempo: ${data.duration} · Promedio: ${data.avgMs} ms · Consultas: ${data.count}`;
+        }
 
         document.querySelectorAll(".suggestion").forEach(el => {
           el.addEventListener("click", () => {

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"textSearching/pkg/kmp"
@@ -50,7 +51,11 @@ type PageData struct {
 }
 
 func main() {
-	filePath := "./Books/dracula.txt"
+	// métricas atómicas para autocompletado
+	var totalSuggestNanos int64
+	var suggestCount int64
+
+	filePath := "./Books/Yo, robot.txt"
 	text := bringText(filePath)
 	normalizedText := normalize.NormalizeText(text)
 	trie := buildTrieFromText(normalizedText)
@@ -118,9 +123,40 @@ func main() {
 			return
 		}
 
+		// medir tiempo de la sugerencia
+		startSuggest := time.Now()
 		results := trie.Suggest(strings.ToLower(prefix), 10)
+		dur := time.Since(startSuggest)
 
-		jsonData, err := json.Marshal(results)
+		// actualizar métricas atómicas
+		atomic.AddInt64(&totalSuggestNanos, dur.Nanoseconds())
+		atomic.AddInt64(&suggestCount, 1)
+
+		// calcular promedio de manera segura
+		cnt := atomic.LoadInt64(&suggestCount)
+		total := atomic.LoadInt64(&totalSuggestNanos)
+		avgMs := 0.0
+		if cnt > 0 {
+			avgMs = float64(total) / float64(cnt) / 1e6
+		}
+
+		var durationStr string
+		if dur.Milliseconds() > 0 {
+			durationStr = fmt.Sprintf("%.3f ms", float64(dur.Microseconds())/1000.0)
+		} else if dur.Microseconds() > 0 {
+			durationStr = fmt.Sprintf("%d µs", dur.Microseconds())
+		} else {
+			durationStr = fmt.Sprintf("%d ns", dur.Nanoseconds())
+		}
+
+		resp := map[string]interface{}{
+			"suggestions": results,
+			"duration":    durationStr,
+			"avgMs":       fmt.Sprintf("%.6f", avgMs),
+			"count":       cnt,
+		}
+
+		jsonData, err := json.Marshal(resp)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("[]"))
