@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"html/template"
@@ -11,6 +12,7 @@ import (
 
 	"textSearching/pkg/kmp"
 	"textSearching/pkg/normalize"
+	trie "textSearching/pkg/trie_autocomplete"
 )
 
 func bringText(text string) string {
@@ -27,6 +29,19 @@ func bringText(text string) string {
 	return fileContent
 }
 
+func buildTrieFromText(text string) *trie.Trie {
+	t := trie.NewTrie()
+	words := strings.Fields(text)
+	for _, word := range words {
+		clean := strings.ToLower(strings.Trim(word, ",.!?\"'"))
+		if clean == "" {
+			continue
+		}
+		t.Insert(clean)
+	}
+	return t
+}
+
 type PageData struct {
 	TextPath, Pattern, Result string
 	Positions                 []int
@@ -38,53 +53,9 @@ func main() {
 	filePath := "./Books/dracula.txt"
 	text := bringText(filePath)
 	normalizedText := normalize.NormalizeText(text)
+	trie := buildTrieFromText(normalizedText)
 
-	tmpl := template.Must(template.New("index").Parse(`
-	<!DOCTYPE html>
-	<html lang="es">
-	<head>
-		<meta charset="UTF-8">
-		<title>Buscador de Patrones (KMP)</title>
-		<style>
-			body { font-family: sans-serif; background: #f7f7f7; padding: 2rem; }
-			h1 { color: #333; }
-			form { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-			input, textarea, button { width: 100%; margin-top: 10px; padding: 8px; }
-			button { background: #007BFF; color: white; border: none; border-radius: 4px; cursor: pointer; }
-			.result { margin-top: 1.5rem; background: #fff; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-		</style>
-	</head>
-	<body>
-		<h1>Buscador de Patrones con KMP</h1>
-		<form method="POST" action="/">
-			<label>Patrón a buscar:</label>
-			<input name="pattern" value="{{.Pattern}}" placeholder="Ingresa una palabra o frase...">
-			<button type="submit">Buscar</button>
-		</form>
-
-		{{if .Positions}}
-		<div class="result">
-			<h3>Resultados:</h3>
-			<p><strong>Patrón:</strong> {{.Pattern}}</p>
-			<p><strong>Tiempo:</strong> {{.TimeElapsed}}</p>
-			<p><strong>Ocurrencias encontradas:</strong> {{len .Positions}}</p>
-			<ul>
-			{{range $idx, $pos := .Positions}}
-				<li><strong>Posición {{$pos}}:</strong> {{index $.Contexts $idx}}</li>
-			{{end}}
-			</ul>
-		</div>
-		{{else if .Result}}
-		<div class="result">
-			<h3>Resultados:</h3>
-			<p><strong>Patrón:</strong> {{.Pattern}}</p>
-			<p><strong>Tiempo:</strong> {{.TimeElapsed}}</p>
-			<p>{{.Result}}</p>
-		</div>
-		{{end}}
-	</body>
-	</html>
-	`))
+	tmpl := template.Must(template.ParseFiles("app/index.html"))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		data := PageData{}
@@ -132,10 +103,30 @@ func main() {
 				data.Contexts = contexts
 			}
 
-			tmpl.Execute(w, data)
+			tmpl.ExecuteTemplate(w, "index.html", data)
 			return
 		}
-		tmpl.Execute(w, data)
+		tmpl.ExecuteTemplate(w, "index.html", data)
+	})
+
+	http.HandleFunc("/suggest", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		prefix := r.URL.Query().Get("prefix")
+
+		if prefix == "" {
+			w.Write([]byte("[]"))
+			return
+		}
+
+		results := trie.Suggest(strings.ToLower(prefix), 10)
+
+		jsonData, err := json.Marshal(results)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("[]"))
+			return
+		}
+		w.Write(jsonData)
 	})
 
 	fmt.Println("Servidor en http://localhost:8080")
