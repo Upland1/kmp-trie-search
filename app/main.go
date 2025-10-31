@@ -125,7 +125,10 @@ func main() {
 
 		// medir tiempo de la sugerencia
 		startSuggest := time.Now()
-		results := trie.Suggest(strings.ToLower(prefix), 10)
+		results := trie.Suggest(strings.ToLower(prefix), 10, 0)
+		if len(results) == 0 {
+			results = trie.Suggest(strings.ToLower(prefix), 10, 1)
+		}
 		dur := time.Since(startSuggest)
 
 		// actualizar métricas atómicas

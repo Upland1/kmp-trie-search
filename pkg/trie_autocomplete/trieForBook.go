@@ -97,19 +97,65 @@ func (t *Trie) Collect(node *TrieNode, prefix []rune, out *[]string, limit int) 
 	}
 }
 
-// Suggest returns up to 'limit' suggestions (completions) for the given prefix
-// Returns all the complete words (prefix + sufix)
-func (t *Trie) Suggest(prefix string, limit int) []string {
+// Suggest returns up to 'limit' suggestions that are within the maxEdits from the prefix
+func (t *Trie) Suggest(prefix string, limit int, maxEdits int) []string {
+	if maxEdits <= 0 {
+		return t.SuggestExact(prefix, limit)
+	}
+	return t.SuggestFuzz(prefix, limit, maxEdits)
+}
+
+// Returns words with the given prefix
+func (t *Trie) SuggestExact(prefix string, limit int) []string {
 	res := make([]string, 0, limit)
 	node := t._root
-	prefixRunes := []rune(prefix)
-	for _, r := range prefixRunes {
+	for _, r := range prefix {
 		if node.children[r] == nil {
 			return res
 		}
 		node = node.children[r]
+
 	}
-	t.Collect(node, prefixRunes, &res, limit)
+	t.Collect(node, []rune(prefix), &res, limit)
+	return res
+}
+
+// Returns words within maxEdits from the prefix
+func (t *Trie) SuggestFuzz(prefix string, limit int, maxEdits int) []string {
+	res := make([]string, 0, limit)
+
+	var dfs func(node *TrieNode, prefix []rune, remain []rune, edits int)
+	dfs = func(node *TrieNode, prefix []rune, remain []rune, edits int) {
+		if node == nil || len(res) >= limit || edits < 0 {
+			return
+		}
+
+		if node.isWord && len(remain) == 0 {
+			res = append(res, string(prefix))
+		}
+
+		var curr rune
+		if len(remain) > 0 {
+			curr = remain[0]
+		}
+
+		for r, child := range node.children {
+			if len(remain) > 0 {
+				if r == curr {
+					dfs(child, append(prefix, r), remain[1:], edits)
+				} else {
+					dfs(child, append(prefix, r), remain, edits-1)
+				}
+			}
+		}
+
+		if len(remain) > 0 {
+			dfs(node, prefix, remain[1:], edits-1)
+		}
+	}
+
+	dfs(t._root, []rune{}, []rune(prefix), maxEdits)
+	sort.Strings(res)
 	return res
 }
 
