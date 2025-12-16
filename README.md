@@ -2,31 +2,31 @@
 
 Pattern search and autocomplete project based on KMP and Trie.
 
-Este repositorio contiene una pequeña aplicación escrita en Go que permite:
-- Buscar patrones en un corpus de texto usando el algoritmo KMP.
-- Sugerir autocompletado por prefijo (estructura Trie) y combinar la sugerencia con la búsqueda.
-- Interfaz web sencilla para probar búsquedas y ver contextos resaltados.
+This repository contains a small application written in Go that allows:
+- Pattern searching in a text corpus using the KMP algorithm.
+- Autocomplete suggestions by prefix (using a Trie structure) and combining suggestions with the search.
+- Simple web interface to test searches and view highlighted contexts.
 
-## Requisitos
-- Go (recomendado >= 1.20). Descárgalo en: https://go.dev/dl/
-- Navegador para la interfaz web.
+## Requirements
+- Go (recommended >= 1.20). Download it at: https://go.dev/dl/
+- A web browser for the interface.
 
-## Ejecutar en desarrollo
+## Run in development
 
 ```bash
 go mod tidy
 ```
 
-Run with app:
+Run the app:
 
 ```bash
 go run ./app
 ```
 
-Open with browser:
+Open in browser:
 
 ```bash
 http://localhost:8080
 ```
 
-El servidor servirá una página simple para ingresar el patrón y ver las ocurrencias con contexto.
+The server will serve a simple page to enter the pattern and view occurrences with context.
